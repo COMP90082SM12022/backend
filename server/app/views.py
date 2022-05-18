@@ -189,22 +189,23 @@ class LinkUploadView(APIView):
             visualisation_file = Transfer.generate_visualisation_file(result, list(objects_dic.keys()), animation_profile,
                                                                       plan['result']['plan'])
             print('visualization file generation done')
-            # if 'fileType' in request.data:
-            try:
-                vfg = open("vf_out.vfg", "w")
-                vfg.write(json.dumps(visualisation_file))
-                vfg.close()
-                print('vfg file saving done')
-            except:
-                traceback.print_exc()
-                print('vfg file saving failed')
-            try:
-                capture_result = capture("vf_out.vfg")
-                print('file format transfer successfully')
-            except:
-                traceback.print_exc()
-                print('file format transfer failed')
-                
+            if 'fileType' in request.data and request.data['fileType'] != 'vfg':
+                try:
+                    vfg = open("vf_out.vfg", "w")
+                    vfg.write(json.dumps(visualisation_file))
+                    vfg.close()
+                    print('vfg file saving done')
+                except:
+                    traceback.print_exc()
+                    print('vfg file saving failed')
+                try:
+                    capture_result = capture("vf_out.vfg",request.data['fileType'])
+                    print('file format transfer successfully')
+                except:
+                    traceback.print_exc()
+                    print('file format transfer failed')
+            else:
+                return Response(visualisation_file) 
             # if capture_result == "error":
             #     error_file = open("error.txt", "w")
             #     error_file.write(capture_result)
@@ -236,7 +237,7 @@ class LinkUploadView(APIView):
                     #except IOError:
                     #    response = HttpResponseNotFound("File doesn't exist")
                     #return response
-            return Response(visualisation_file)
+            
         except Exception as e:
             print('visualization file generation failed')
             return Response({"message": "Failed to generate visualisation file \n\n " + str(e)})
@@ -271,7 +272,7 @@ def imgdir(path, format):
 # Xinzhe Li 22/09/2020
 
 #def capture(filename, format):
-def capture(filename):
+def capture(filename,fileType):
     # fpng stands for the first png in a sequence and lpng stands for the last
     #if format != "gif" and format != "mp4" and format != "png" and format != "webm" and format !="lpng" and format !="fpng":
     #    return "error"
@@ -289,41 +290,54 @@ def capture(filename):
     else:
         print('directory generation failed')
     # create png zip & cp zip file to current_time dir
-    try:
-        zipf = zipfile.ZipFile("planimation.zip", 'w', zipfile.ZIP_DEFLATED)
-        zipdir('ScreenshotFolder', zipf)
-        zipf.close()
-        subprocess.run(['cp', 'planimation.zip', './' + current_time])
-        subprocess.run(['rm', '-rf', 'planimation.zip'])
-        print('zip generation done')
-    except:
-        print('zip generation done')
-
+    if fileType == 'png':
+        try:
+            zipf = zipfile.ZipFile("planimation.zip", 'w', zipfile.ZIP_DEFLATED)
+            zipdir('ScreenshotFolder', zipf)
+            zipf.close()
+            subprocess.run(['cp', 'planimation.zip', './' + current_time])
+            subprocess.run(['rm', '-rf', 'planimation.zip'])
+            print('zip generation done')
+        except:
+            print('zip generation done')
+        p4 = subprocess.run(["rm", "-rf", "ScreenshotFolder"])
+        if p4.returncode != 0:
+            return "error"
+        return current_time + '/planimation.zip'
     # create lpng & fpng file and cp to current_time dir
     #imgdir('ScreenshotFolder', format)
     #subprocess.run(['cp', 'planimation.png', './' + current_time])
     #subprocess.run(['rm', '-rf', 'planimation.png'])
 
     # create mp4 file & cp to current_time dir
-    p2 = subprocess.run(["ffmpeg", "-framerate", "2", "-i", "ScreenshotFolder/shot%d.png", "-c:v", "libx264", "-vf",
-                                "fps=25", "-pix_fmt", "yuv420p", "planimation.mp4"])
-    if p2.returncode != 0:
-        print('mp4 generation failed')
-    else:
-        subprocess.run(['cp', 'planimation.mp4', './' + current_time])
-        subprocess.run(['rm', '-rf', 'planimation.mp4'])
-        print('mp4 generation done')
-    # create gif file & cp to current_time dir
-    p2 = subprocess.run(["ffmpeg", "-framerate", "2", "-i", "ScreenshotFolder/shot%d.png", "-vf",
-                            "scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
-                            "planimation.gif"])
-    if p2.returncode != 0:
-        print('gif generation failed')
-    else:
-        subprocess.run(['cp', 'planimation.gif', './' + current_time])
-        subprocess.run(['rm', '-rf', 'planimation.gif'])
-        print('gif generation done')
-
+    elif fileType == 'mp4':
+        p2 = subprocess.run(["ffmpeg", "-framerate", "2", "-i", "ScreenshotFolder/shot%d.png", "-c:v", "libx264", "-vf",
+                                    "fps=25", "-pix_fmt", "yuv420p", "planimation.mp4"])
+        if p2.returncode != 0:
+            print('mp4 generation failed')
+        else:
+            subprocess.run(['cp', 'planimation.mp4', './' + current_time])
+            subprocess.run(['rm', '-rf', 'planimation.mp4'])
+            print('mp4 generation done')
+        p4 = subprocess.run(["rm", "-rf", "ScreenshotFolder"])
+        if p4.returncode != 0:
+            return "error"
+        return current_time + '/planimation.mp4'
+    elif fileType == 'gif':
+        # create gif file & cp to current_time dir
+        p2 = subprocess.run(["ffmpeg", "-framerate", "2", "-i", "ScreenshotFolder/shot%d.png", "-vf",
+                                "scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                                "planimation.gif"])
+        if p2.returncode != 0:
+            print('gif generation failed')
+        else:
+            subprocess.run(['cp', 'planimation.gif', './' + current_time])
+            subprocess.run(['rm', '-rf', 'planimation.gif'])
+            print('gif generation done')
+        p4 = subprocess.run(["rm", "-rf", "ScreenshotFolder"])
+        if p4.returncode != 0:
+            return "error"
+        return current_time + '/planimation.gif'
     ## create webm file & cp to current_time dir
     #p2 = subprocess.run(["ffmpeg", "-framerate", "2", "-i", "ScreenshotFolder/shot%d.png",
     #                         "ScreenshotFolder/buffer.mp4"])
@@ -371,9 +385,7 @@ def capture(filename):
     #     p3 = subprocess.run(["ffmpeg", "-i", "ScreenshotFolder/buffer.mp4", "planimation.webm"])
     #     if p3.returncode != 0:
     #         return "error"
-    p4 = subprocess.run(["rm", "-rf", "ScreenshotFolder"])
-    if p4.returncode != 0:
-        return "error"
+
     #return current_time, "planimation." + format
     return "success"
 
