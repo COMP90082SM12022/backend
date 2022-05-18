@@ -4,6 +4,9 @@ from django.shortcuts import render
 import sys
 import os
 import subprocess
+from selenium import webdriver
+from time import sleep
+import threading
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + "vfg/solver"))
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + "vfg/parser"))
@@ -417,6 +420,10 @@ class LinkDownloadPlanimation(APIView):
         vfg.write(vfg_file)
         vfg.close()
 
+        # Send vfg
+        vfg_path = os.path.join(os.getcwd(), "vf_out.vfg")
+        capture_flow(vfg_path) # vfg path should be declared.
+
         # Process vfg to output files in desired format
         current_dir, output_name = capture("vf_out.vfg", output_format)
         if output_name == "error":
@@ -432,3 +439,30 @@ class LinkDownloadPlanimation(APIView):
         except IOError:
             response = HttpResponseNotFound('File not exist')
         return response
+
+def clean_up_dir(path):
+    pass
+
+def vfg_capture_selenium(web_driver, img_dir):
+    capture_time = 0
+    clean_up_dir()
+    while True:
+        img_file = os.path.join(img_dir, f'{capture_time}.png')
+        try:
+            web_driver.save_screenshot(img_file)
+        except:
+            return
+        capture_time += 1
+
+def capture_flow(vfg_location):
+    img_dir = 'img'
+    web_driver = webdriver.Chrome()
+    t = threading.Thread(target=vfg_capture_selenium, args=(web_driver, img_dir))
+    t.start()
+    web_driver.get(f"url?filepath={vfg_location}")  # url should be filled later, get method --> key=value
+    web_driver.find_element().send_keys()
+    web_driver.find_element().click()
+    sleep(1)
+    web_driver.back()
+    sleep(1)
+    web_driver.quit()
