@@ -192,22 +192,23 @@ class LinkUploadView(APIView):
             print('visualization file generation done')
             if 'fileType' in request.data and request.data['fileType'] != 'vfg':
                 try:
-                    vfg = open("vf_out.vfg", "w")
-                    vfg.write(json.dumps(visualisation_file))
-                    vfg.close()
-                    t = threading.Thread(capture, args=("vf_out.vfg"))
-                    print('vfg file saving done')
-                except:
-                    traceback.print_exc()
-                    print('vfg file saving failed')
-                try:
                     capture_result = capture("vf_out.vfg",request.data['fileType'])
                     print('file format transfer successfully')
                 except:
                     traceback.print_exc()
                     print('file format transfer failed')
             else:
-                return Response(visualisation_file) 
+                try:
+                    vfg = open("vf_out.vfg", "w")
+                    vfg.write(json.dumps(visualisation_file))
+                    vfg.close()
+                    print(sys.path[0])
+                    t = threading.Thread(target=capture, args=("vf_out.vfg"))
+                    print('vfg file saving done')
+                except:
+                    traceback.print_exc()
+                    print('vfg file saving failed')
+                return Response(visualisation_file)
             # if capture_result == "error":
             #     error_file = open("error.txt", "w")
             #     error_file.write(capture_result)
