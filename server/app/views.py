@@ -425,6 +425,7 @@ class LinkDownloadPlanimation(APIView):
         #     response = HttpResponse(open(dir + '/planimation.' + format, 'rb'), content_type='application/' + format)
         #     response['Content-Disposition'] = 'attachment; filename="planimation.' + format + '"'
         #     return response
+        user_id = request.data['user_id']
         try:
             vfg_file = request.data['vfg'].encode('utf-8').decode('utf-8-sig')
         except Exception as e:
@@ -442,12 +443,15 @@ class LinkDownloadPlanimation(APIView):
 
         # Process vfg to output files in desired format
         # current_dir, output_name = capture("vf_out.vfg", output_format)
+        current_dir = sys.path[0]
+        os.chdir(user_id)
         filename = ""
         for file in os.listdir():
             if ("planimation." + format) in file:
                 filename = file
         if filename == "":
             response = HttpResponseNotFound("Failed to produce files")
+            os.chdir(current_dir)
             return response
         try:
             if output_format == "png":
@@ -458,4 +462,5 @@ class LinkDownloadPlanimation(APIView):
             # delete2 = subprocess.run(["rm", "-rf", "vf_out.vfg"])
         except IOError:
             response = HttpResponseNotFound('File not exist')
+        os.chdir(current_dir)
         return response
