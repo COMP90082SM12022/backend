@@ -1,5 +1,6 @@
 import threading
 from time import time
+import time
 import traceback
 from django.shortcuts import render
 import sys
@@ -189,8 +190,22 @@ class LinkUploadView(APIView):
         try:
             visualisation_file = Transfer.generate_visualisation_file(result, list(objects_dic.keys()), animation_profile,
                                                                       plan['result']['plan'])
+            now = time()
+            visualisation_file['user_id'] = str(now)
             print('visualization file generation done')
             if 'fileType' in request.data and request.data['fileType'] != 'vfg':
+                try:
+                    vfg = open("vf_out.vfg", "w")
+                    vfg_json = json.dumps(visualisation_file)
+                    vfg.write(vfg_json)
+                    vfg.close()
+                    t = threading.Thread(target=capture, args=["vf_out.vfg", now])
+                    t.setDaemon(False)
+                    t.start()
+                    print('vfg file saving done')
+                except:
+                    traceback.print_exc()
+                    print('vfg file saving failed')
                 try:
                     capture_result = capture("vf_out.vfg",request.data['fileType'])
                     print('file format transfer successfully')
@@ -200,15 +215,17 @@ class LinkUploadView(APIView):
             else:
                 try:
                     vfg = open("vf_out.vfg", "w")
-                    vfg.write(json.dumps(visualisation_file))
+                    vfg_json = json.dumps(visualisation_file)
+                    vfg.write(vfg_json)
                     vfg.close()
-                    print(sys.path[0])
-                    t = threading.Thread(target=capture, args=("vf_out.vfg"))
+                    t = threading.Thread(target=capture, args=["vf_out.vfg", now])
+                    t.setDaemon(False)
+                    t.start()
                     print('vfg file saving done')
                 except:
                     traceback.print_exc()
                     print('vfg file saving failed')
-                return Response(visualisation_file)
+                return Response(visualisation_file) 
             # if capture_result == "error":
             #     error_file = open("error.txt", "w")
             #     error_file.write(capture_result)
@@ -275,13 +292,15 @@ def imgdir(path, format):
 # Xinzhe Li 22/09/2020
 
 #def capture(filename, format):
-def capture(filename):
+def capture(filename, timestamp):
     # fpng stands for the first png in a sequence and lpng stands for the last
     #if format != "gif" and format != "mp4" and format != "png" and format != "webm" and format !="lpng" and format !="fpng":
     #    return "error"
     current_path = sys.path[0]
     print(current_path)
-    p1 = subprocess.run(["sudo", "xvfb-run", "-a", "-s", "-screen 0 640x480x24", current_path+"/linux_build/linux_standalone.x86_64", filename, "-logfile", "stdlog", "-screen-fullscreen", "0", "-screen-width", "640", "-screen-height", "480"])
+    os.mkdir(str(timestamp))
+    os.chdir(str(timestamp))
+    p1 = subprocess.run(["sudo", "xvfb-run", "-a", "-s", "-screen 0 640x480x24", current_path+ str(timestamp) + "/linux_build/linux_standalone.x86_64", filename, "-logfile", "stdlog", "-screen-fullscreen", "0", "-screen-width", "640", "-screen-height", "480"])
     if p1.returncode != 0:
         return "error"
     print('subprocess successfully started')
@@ -337,6 +356,7 @@ def capture(filename):
             # subprocess.run(['cp', 'planimation.gif', './' + current_time])
             # subprocess.run(['rm', '-rf', 'planimation.gif'])
         print('gif generation done')
+    os.chdir(current_path)
     # p4 = subprocess.run(["rm", "-rf", "ScreenshotFolder"])
     # if p4.returncode != 0:
     #     return "error"
