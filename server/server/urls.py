@@ -18,6 +18,8 @@ from django.conf.urls import url
 from django.urls import path,include
 from rest_framework.routers import DefaultRouter
 from app import views
+from django.views.static import serve
+from server.settings import MEDIA_ROOT
 
 router = DefaultRouter()
 router.register('app', views.PDDLViewSet)
@@ -28,4 +30,5 @@ urlpatterns = [
     url(r'upload/(?P<filename>[^/]+)$',views.LinkUploadView.as_view()),
     path('help/', views.UserGuide.as_view()),
     url(r'downloadVisualisation', views.LinkDownloadPlanimation.as_view()),
+    url(r'^download/(?P<path>.*)$',serve,{"document_root":MEDIA_ROOT}),
     ]

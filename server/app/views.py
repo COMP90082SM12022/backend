@@ -67,24 +67,48 @@ class LinkUploadView(APIView):
 
         # .encode('utf-8').decode('utf-8-sig') will remove the \ufeff in the string when add string as value in
         # a dictionary.
-        try:
-            domain_file = request.data['domain'].encode('utf-8').decode('utf-8-sig').lower()
-        except Exception as e:
-            # for more details error template, could use:
-            # return Response({"visualStages": [], "subgoalPool": {}, "subgoalMap": {}, "transferType": 0, "imageTable": {}
-            # ,"message": str(e)})
-            return Response({"message": "Failed to open domain file \n\n " + str(e)})
+        if "fromAPI" not in request.data:
+            try:
+                domain_file = request.data['domain'].encode('utf-8').decode('utf-8-sig').lower()
+            except Exception as e:
+                # for more details error template, could use:
+                # return Response({"visualStages": [], "subgoalPool": {}, "subgoalMap": {}, "transferType": 0, "imageTable": {}
+                # ,"message": str(e)})
+                return Response({"message": "Failed to open domain file \n\n " + str(e)})
 
-        try:
-            problem_file = request.data['problem'].encode('utf-8').decode('utf-8-sig').lower()
-        except Exception as e:
-            return Response({"message": "Failed to open problem file \n\n " + str(e)})
+            try:
+                problem_file = request.data['problem'].encode('utf-8').decode('utf-8-sig').lower()
+            except Exception as e:
+                return Response({"message": "Failed to open problem file \n\n " + str(e)})
 
-        try:
-            animation_file = request.data['animation'].encode('utf-8').decode('utf-8-sig')
-        except Exception as e:
-            return Response({"message": "Failed to open animation file \n\n " + str(e)})
+            try:
+                animation_file = request.data['animation'].encode('utf-8').decode('utf-8-sig')
+            except Exception as e:
+                return Response({"message": "Failed to open animation file \n\n " + str(e)})
+        else:
+            try:
+                domain_file = request.data['domain']
+                domain_file = str(domain_file.read())[2:-1].replace('\\xef\\xbb\\xbf','').replace('\\n','\r\n')
+                domain_file = domain_file.encode('utf8').decode('utf8').lower()
+            except Exception as e:
+                # for more details error template, could use:
+                # return Response({"visualStages": [], "subgoalPool": {}, "subgoalMap": {}, "transferType": 0, "imageTable": {}
+                # ,"message": str(e)})
+                return Response({"message": "Failed to open domain file \n\n " + str(e)})
 
+            try:
+                problem_file = request.data['problem']
+                problem_file = str(problem_file.read())[2:-1].replace('\\xef\\xbb\\xbf','').replace('\\n','\r\n')
+                problem_file = problem_file.encode('utf8').decode('utf8').lower()
+            except Exception as e:
+                return Response({"message": "Failed to open problem file \n\n " + str(e)})
+
+            try:
+                animation_file =  request.data['animation']
+                animation_file = str(animation_file.read())[2:-1].replace('\\xef\\xbb\\xbf','').replace('\\n','\r\n')
+                animation_file = animation_file.encode('utf8').decode('utf8').lower()
+            except Exception as e:
+                return Response({"message": "Failed to open animation file \n\n " + str(e)})
         try:
             domain_file = Parser_Functions.comment_filter(domain_file)
             problem_file = Parser_Functions.comment_filter(problem_file)
@@ -203,8 +227,9 @@ class LinkUploadView(APIView):
                     traceback.print_exc()
                     print('vfg file saving failed')
                 try:
-                    capture_result = capture("vf_out.vfg",request.data['fileType'])
+                    capture_result = capture("vf_out.vfg",userid)
                     print('file format transfer successfully')
+                    return Response(userid)
                 except:
                     traceback.print_exc()
                     print('file format transfer failed')
@@ -305,6 +330,7 @@ def capture(filename, userid):
         print('directory generation failed')
     # create png zip & cp zip file to current_time dir
     # if fileType == 'png':
+
     processes = [Process(target=generate_gif,args=(userid,)),
                 Process(target=generate_mp4,args=(userid,)),
                 Process(target=generate_zip,args=(userid,))]

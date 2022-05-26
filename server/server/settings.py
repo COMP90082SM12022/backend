@@ -41,6 +41,9 @@ INSTALLED_APPS = [
     'corsheaders',
 ]
 
+MEDIA_URL = '/download/' 
+MEDIA_ROOT = os.path.join(BASE_DIR)
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
